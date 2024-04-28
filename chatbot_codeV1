@@ -1,0 +1,47 @@
+import tensorflow as tf
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+# Sample dataset of customer inquiries and responses
+customer_inquiries = [
+    "How can I track my order?",
+    "I want to return a product.",
+    "Do you offer free shipping?",
+    "Can I change my shipping address?",
+    "I need help with a product issue."
+]
+
+responses = [
+    "You can track your order by logging into your account.",
+    "Please visit our returns page for instructions on returning a product.",
+    "Yes, we offer free shipping on orders over $50.",
+    "Please contact our customer support to change your shipping address.",
+    "Sure, could you please provide more details about the issue?"
+]
+
+# Tokenize text data
+tokenizer = Tokenizer()
+tokenizer.fit_on_texts(customer_inquiries)
+sequences = tokenizer.texts_to_sequences(customer_inquiries)
+max_len = max(len(seq) for seq in sequences)
+padded_sequences = pad_sequences(sequences, maxlen=max_len, padding='post')
+
+# Define and train the model
+model = tf.keras.Sequential([
+    tf.keras.layers.Embedding(input_dim=len(tokenizer.word_index)+1, output_dim=64, input_length=max_len),
+    tf.keras.layers.LSTM(64),
+    tf.keras.layers.Dense(len(responses), activation='softmax')
+])
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model.fit(padded_sequences, responses, epochs=10)
+
+# Function to predict response to a customer inquiry
+def predict_response(inquiry):
+    sequence = tokenizer.texts_to_sequences([inquiry])
+    padded_sequence = pad_sequences(sequence, maxlen=max_len, padding='post')
+    predicted_index = tf.argmax(model.predict(padded_sequence), axis=1).numpy()[0]
+    return responses[predicted_index]
+
+# Test the chatbot
+print(predict_response("How do I return a product?"))
+print(predict_response("Can you help me with a technical issue?"))
